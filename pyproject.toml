@@ -1,0 +1,32 @@
+[project]
+name = "mcp-movies-new"
+version = "0.1.0"
+description = "Movies RAG MCP Server"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+
+dependencies = [
+    # env
+    "python-dotenv>=1.0.0",
+
+    # numeric stack (avoid numpy 2.x)
+    "numpy>=1.26.4,<2.0.0",
+    "pandas>=2.1.0,<3.0.0",
+
+    # MCP
+    "mcp>=1.26.0",
+
+    # LangChain (pin as a bundle)
+    "langchain==1.2.7",
+    "langchain-core==1.2.7",
+    "langchain-community==0.4.1",
+    "langchain-mcp-adapters>=0.2.0",
+
+    # Pinecone (use pinecone-client package name)
+    "pinecone-client>=6.0.0,<8.0.0",
+    "langchain-pinecone==0.2.13",
+
+    # Optional UI
+    "streamlit>=1.30.0",
+    "altair==4.2.2",
+]
