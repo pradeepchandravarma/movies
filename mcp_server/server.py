@@ -9,7 +9,7 @@ vectorstore = get_vectorstore(documents=None)
 retriever = get_retriever(vectorstore)
 rag_chain = build_rag_chain(retriever)
 
-mcp = FastMCP("movies-rag-server")
+mcp = FastMCP("movies-rag-server",mount_path="/mcp")
 
 @mcp.tool()
 def recommend_movies(question: str) -> str:

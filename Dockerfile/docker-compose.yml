@@ -1,0 +1,21 @@
+services:
+  mcp:
+    build:
+      context: ..
+      dockerfile: Dockerfile/Dockerfile.mcp
+    container_name: mcp-server
+    network_mode: host
+    env_file:
+      - ../.env
+
+  ui:
+    build:
+      context: ..
+      dockerfile: Dockerfile/Dockerfile.ui
+    container_name: streamlit-ui
+    ports:
+      - "8501:8501"
+    environment:
+      MCP_URL: http://localhost:8000
+    depends_on:
+      - mcp

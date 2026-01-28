@@ -7,7 +7,7 @@ from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
 load_dotenv()
-
+MCP_URL = os.getenv("MCP_URL", "http://localhost:8000/mcp")
 
 # -------------------------------------------------------
 # HARD GUARD: movie-only enforcement
@@ -32,7 +32,7 @@ async def main():
     client = MultiServerMCPClient(
         {
             "movies": {
-                "url": "http://localhost:8000/mcp",
+                "url": MCP_URL,
                 "transport": "streamable-http",
             }
         }

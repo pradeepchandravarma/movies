@@ -1,0 +1,18 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir uv
+
+COPY pyproject.toml ./
+COPY uv.lock ./
+
+# Install deps into uv-managed venv
+RUN uv sync --frozen --no-dev
+
+COPY . .
+
+EXPOSE 8000
+
+# IMPORTANT: use venv python
+CMD ["/app/.venv/bin/python", "-m", "mcp_server.server"]

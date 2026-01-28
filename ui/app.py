@@ -1,19 +1,27 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-import asyncio
+import os
+import anyio
 import streamlit as st
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.prebuilt import create_react_agent
 from langchain_openai import ChatOpenAI
 
-st.set_page_config(page_title="🎬 Movie Chatbot", layout="centered")
+
+# -------------------------------------------------------
+# Streamlit config
+# -------------------------------------------------------
+st.set_page_config(
+    page_title="🎬 Movie Chatbot",
+    layout="centered",
+)
 st.header("🎬 Movie Recommendation Chatbot")
 
 
 # -------------------------------------------------------
-# HARD GUARD: movie-only enforcement (SAME AS client.py)
+# HARD GUARD: movie-only enforcement
 # -------------------------------------------------------
 def is_movie_question(text: str) -> bool:
     movie_keywords = [
@@ -29,20 +37,23 @@ def is_movie_question(text: str) -> bool:
 
 
 # -------------------------------------------------------
-# Cache the agent (important!)
+# Cached agent initialization
 # -------------------------------------------------------
 @st.cache_resource
 def get_agent():
+    mcp_url = os.getenv("MCP_URL", "http://localhost:8000/mcp")
+
     client = MultiServerMCPClient(
         {
             "movies": {
-                "url": "http://localhost:8000/mcp",
+                "url": mcp_url,
                 "transport": "streamable-http",
             }
         }
     )
 
-    tools = asyncio.run(client.get_tools())
+    # ✅ Streamlit-safe async execution
+    tools = anyio.run(client.get_tools)
 
     model = ChatOpenAI(
         model="gpt-4.1-mini",
@@ -82,19 +93,16 @@ if user_input:
     )
     st.chat_message("user").markdown(user_input)
 
-    # 🔒 HARD BLOCK (THIS WAS MISSING)
+    # 🔒 HARD BLOCK: non-movie questions
     if not is_movie_question(user_input):
         bot_reply = "I can only answer movie-related questions."
 
     else:
         with st.spinner("Thinking..."):
-            response = asyncio.run(
-                agent.ainvoke(
-                    {
-                        # ✅ PASS FULL CHAT HISTORY
-                        "messages": st.session_state.messages
-                    }
-                )
+            # ✅ Streamlit-safe async invocation
+            response = anyio.run(
+                agent.ainvoke,
+                {"messages": st.session_state.messages},
             )
             bot_reply = response["messages"][-1].content
 
