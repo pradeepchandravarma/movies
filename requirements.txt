@@ -12,8 +12,9 @@ langchain-pinecone
 langgraph
 
 # --- MCP ---
-mcp
+fastmcp
 langchain-mcp-adapters
+
 
 # --- Vector DB ---
 pinecone
