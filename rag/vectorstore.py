@@ -1,26 +1,31 @@
+import os
+from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
-from langchain_pinecone import PineconeVectorStore
 from langchain_openai import OpenAIEmbeddings
-from rag.config import *
+from langchain_pinecone import PineconeVectorStore
 
-def get_vectorstore(documents=None):
-    pc = Pinecone(api_key=PINECONE_API_KEY)
+load_dotenv()
+INDEX_NAME = "movies-rag"
+NAMESPACE = "movielens"
+DIMENSION = 1536
 
-    existing = [i["name"] for i in pc.list_indexes()]
-    if INDEX_NAME not in existing:
+def get_vectorstore(create=False, documents=None):
+    pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
+
+    if create and INDEX_NAME not in [i["name"] for i in pc.list_indexes()]:
         pc.create_index(
             name=INDEX_NAME,
-            dimension=EMBEDDING_DIM,
+            dimension=DIMENSION,
             metric="cosine",
             spec=ServerlessSpec(cloud="aws", region="us-east-1"),
         )
 
-    embeddings = OpenAIEmbeddings(model=OPENAI_EMBEDDING_MODEL)
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
     if documents:
         return PineconeVectorStore.from_documents(
-            documents=documents,
-            embedding=embeddings,
+            documents,
+            embeddings,
             index_name=INDEX_NAME,
             namespace=NAMESPACE,
         )

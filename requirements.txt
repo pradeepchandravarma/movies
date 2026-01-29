@@ -1,0 +1,26 @@
+# --- Core ---
+python-dotenv
+
+# --- Data ---
+pandas
+
+# --- LangChain ---
+langchain
+langchain-core
+langchain-openai
+langchain-pinecone
+langgraph
+
+# --- MCP ---
+mcp
+langchain-mcp-adapters
+
+# --- Vector DB ---
+pinecone
+
+# --- LLM Providers ---
+openai
+
+
+# --- UI ---
+streamlit

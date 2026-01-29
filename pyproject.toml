@@ -6,28 +6,18 @@ readme = "README.md"
 requires-python = ">=3.11,<3.12"
 
 dependencies = [
-    # Environment
-    "python-dotenv>=1.0.0",
-
-    # Numeric stack (avoid numpy 2.x)
-    "numpy>=1.26.4,<2.0.0",
-    "pandas>=2.1.0,<3.0.0",
-
-    # MCP ecosystem
-    "mcp>=1.26.0",
-    "mcp-server>=0.1.0,<0.2.0",
-
-    # LangChain stack (explicitly pinned)
-    "langchain==1.2.7",
-    "langchain-core==1.2.7",
-    "langchain-community==0.4.1",
-    "langchain-mcp-adapters>=0.2.0",
-
-    # Vector DB / RAG
-    "pinecone-client>=6.0.0,<8.0.0",
-    "langchain-pinecone==0.2.13",
-
-    # UI
-    "streamlit>=1.30.0",
-    "altair==4.2.2",
+   "langchain>=1.2.7",
+   "langchain-core>=1.2.7",
+   "langchain-groq>=1.1.1",
+   "langchain-mcp-adapters>=0.2.0",
+   "langchain-openai>=1.1.7",
+   "langchain-pinecone>=0.2.13",
+   "langgraph>=1.0.7",
+   "mcp>=1.26.0",
+   "openai>=2.15.0",
+   "pandas>=2.3.3",
+   "pinecone>=7.3.0",
+   "python-dotenv>=1.2.1",
+   "streamlit>=1.53.1",
+   "trio>=0.32.0",
 ]

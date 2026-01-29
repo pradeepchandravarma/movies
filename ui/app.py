@@ -1,113 +1,101 @@
-from dotenv import load_dotenv
-load_dotenv()
-
-import os
-import anyio
 import streamlit as st
+import asyncio
+import os
+from dotenv import load_dotenv
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.prebuilt import create_react_agent
 from langchain_openai import ChatOpenAI
 
+load_dotenv()
 
-# -------------------------------------------------------
-# Streamlit config
-# -------------------------------------------------------
-st.set_page_config(
-    page_title="🎬 Movie Chatbot",
-    layout="centered",
+st.title("🎬 MovieLens RAG (OpenAI + MCP)")
+
+# ----------------------------
+# Config (container-safe)
+# ----------------------------
+MCP_MOVIES_URL = os.getenv(
+    "MCP_MOVIES_URL",
+    "http://127.0.0.1:8000/mcp/",
 )
-st.header("🎬 Movie Recommendation Chatbot")
 
-
-# -------------------------------------------------------
-# HARD GUARD: movie-only enforcement
-# -------------------------------------------------------
-def is_movie_question(text: str) -> bool:
-    movie_keywords = [
-        "movie", "movies", "film", "cinema",
-        "actor", "actress", "director",
-        "rating", "ratings", "genre",
-        "sci-fi", "science fiction",
-        "action", "romantic", "romance",
-        "thriller", "comedy", "drama",
-    ]
-    text = text.lower()
-    return any(keyword in text for keyword in movie_keywords)
-
-
-# -------------------------------------------------------
-# Cached agent initialization
-# -------------------------------------------------------
-@st.cache_resource
-def get_agent():
-    mcp_url = os.getenv("MCP_URL", "http://localhost:8000/mcp")
+# ----------------------------
+# Session-safe agent creation
+# ----------------------------
+def init_agent():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     client = MultiServerMCPClient(
         {
             "movies": {
-                "url": mcp_url,
+                "url": MCP_MOVIES_URL,
                 "transport": "streamable-http",
             }
         }
     )
 
-    # ✅ Streamlit-safe async execution
-    tools = anyio.run(client.get_tools)
+    tools = loop.run_until_complete(client.get_tools())
 
     model = ChatOpenAI(
         model="gpt-4.1-mini",
         temperature=0,
     )
 
-    return create_react_agent(model, tools)
+    agent = create_react_agent(
+        model=model,
+        tools=tools,
+    )
+
+    return agent, loop
 
 
-agent = get_agent()
+# Initialize once per session
+if "agent" not in st.session_state:
+    st.session_state.agent, st.session_state.loop = init_agent()
 
-
-# -------------------------------------------------------
-# Chat history state
-# -------------------------------------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 
-# -------------------------------------------------------
+# ----------------------------
 # Render chat history
-# -------------------------------------------------------
+# ----------------------------
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-
-# -------------------------------------------------------
-# User input
-# -------------------------------------------------------
-user_input = st.chat_input("Ask me about movies...")
-
-if user_input:
-    # Save user message
+# ----------------------------
+# Chat input
+# ----------------------------
+if user_input := st.chat_input("Ask for movie recommendations"):
+    # 1️⃣ Append + render user message immediately
     st.session_state.messages.append(
         {"role": "user", "content": user_input}
     )
-    st.chat_message("user").markdown(user_input)
+    with st.chat_message("user"):
+        st.markdown(user_input)
 
-    # 🔒 HARD BLOCK: non-movie questions
-    if not is_movie_question(user_input):
-        bot_reply = "I can only answer movie-related questions."
-
-    else:
-        with st.spinner("Thinking..."):
-            # ✅ Streamlit-safe async invocation
-            response = anyio.run(
-                agent.ainvoke,
-                {"messages": st.session_state.messages},
-            )
-            bot_reply = response["messages"][-1].content
-
-    # Save assistant message
-    st.session_state.messages.append(
-        {"role": "assistant", "content": bot_reply}
+    # 2️⃣ Call agent with FULL history
+    result = st.session_state.loop.run_until_complete(
+        st.session_state.agent.ainvoke(
+            {"messages": st.session_state.messages}
+        )
     )
-    st.chat_message("assistant").markdown(bot_reply)
+
+    # 3️⃣ Enforce tool-only answers
+    used_tool = any(
+        msg.type == "tool" for msg in result["messages"]
+    )
+
+    if not used_tool:
+        assistant_reply = "I don't know based on the available tools."
+    else:
+        assistant_reply = result["messages"][-1].content
+
+    # 4️⃣ Append + render assistant message immediately
+    st.session_state.messages.append(
+        {"role": "assistant", "content": assistant_reply}
+    )
+    with st.chat_message("assistant"):
+        st.markdown(assistant_reply)
