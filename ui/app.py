@@ -1,18 +1,26 @@
-import streamlit as st
-import asyncio
 import os
+import uuid
+import asyncio
+import streamlit as st
 from dotenv import load_dotenv
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.prebuilt import create_react_agent
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI  # ✅ correct
 
 load_dotenv()
 
+# ----------------------------
+# Streamlit config
+# ----------------------------
+st.set_page_config(
+    page_title="MovieLens RAG (MCP)",
+    page_icon="🎬",
+)
 st.title("🎬 MovieLens RAG (OpenAI + MCP)")
 
 # ----------------------------
-# Config (container-safe)
+# MCP config
 # ----------------------------
 MCP_MOVIES_URL = os.getenv(
     "MCP_MOVIES_URL",
@@ -20,9 +28,18 @@ MCP_MOVIES_URL = os.getenv(
 )
 
 # ----------------------------
-# Session-safe agent creation
+# Session identifiers (for UI only)
+# ----------------------------
+if "user_id" not in st.session_state:
+    st.session_state.user_id = str(uuid.uuid4())
+
+# ----------------------------
+# Agent initialization
 # ----------------------------
 def init_agent():
+    """
+    Create a dedicated asyncio loop and MCP-backed LangGraph agent.
+    """
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
@@ -49,14 +66,14 @@ def init_agent():
 
     return agent, loop
 
-
-# Initialize once per session
+# ----------------------------
+# Initialize session state
+# ----------------------------
 if "agent" not in st.session_state:
     st.session_state.agent, st.session_state.loop = init_agent()
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-
 
 # ----------------------------
 # Render chat history
@@ -69,23 +86,24 @@ for msg in st.session_state.messages:
 # Chat input
 # ----------------------------
 if user_input := st.chat_input("Ask for movie recommendations"):
-    # 1️⃣ Append + render user message immediately
+    # 1️⃣ Render + store user message
     st.session_state.messages.append(
         {"role": "user", "content": user_input}
     )
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # 2️⃣ Call agent with FULL history
+    # 2️⃣ Invoke agent with full history
     result = st.session_state.loop.run_until_complete(
         st.session_state.agent.ainvoke(
             {"messages": st.session_state.messages}
         )
     )
 
-    # 3️⃣ Enforce tool-only answers
+    # 3️⃣ Enforce tool-based answers
     used_tool = any(
-        msg.type == "tool" for msg in result["messages"]
+        getattr(msg, "type", None) == "tool"
+        for msg in result["messages"]
     )
 
     if not used_tool:
@@ -93,7 +111,7 @@ if user_input := st.chat_input("Ask for movie recommendations"):
     else:
         assistant_reply = result["messages"][-1].content
 
-    # 4️⃣ Append + render assistant message immediately
+    # 4️⃣ Render + store assistant reply
     st.session_state.messages.append(
         {"role": "assistant", "content": assistant_reply}
     )

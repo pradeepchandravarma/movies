@@ -1,3 +1,5 @@
+from langfuse.openai import openai
+from langfuse import observe, get_client
 from fastmcp import FastMCP
 from mcp_app.tools import recommend_movies
 
